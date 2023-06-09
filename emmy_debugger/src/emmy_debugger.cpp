@@ -41,7 +41,8 @@ Debugger::Debugger(lua_State* L, std::shared_ptr<EmmyDebuggerManager> manager):
 	hookState(nullptr),
 	running(false),
 	skipHook(false),
-	blocking(false)
+	blocking(false),
+	querying(false)
 {
 }
 
@@ -175,6 +176,11 @@ bool Debugger::IsRunning() const
 	return running;
 }
 
+bool Debugger::IsQuerying() const
+{
+	return querying;
+}
+
 bool Debugger::IsMainCoroutine(lua_State* L) const
 {
 	return L == mainL;
@@ -182,6 +188,8 @@ bool Debugger::IsMainCoroutine(lua_State* L) const
 
 lua_State* Debugger::queryParentThread(lua_State* L)
 {
+	querying = true;
+	
     lua_State* PL = nullptr;
 
     const int t = lua_gettop(L);
@@ -199,6 +207,8 @@ lua_State* Debugger::queryParentThread(lua_State* L)
         }
     }
     lua_settop(L, t);
+	
+	querying = false;
 
 	return PL;
 }
@@ -454,7 +464,10 @@ void Debugger::GetVariable(lua_State* L, std::shared_ptr<Variable> variable, int
 
 	if (queryHelper && (type == LUA_TTABLE || type == LUA_TUSERDATA || type == LUA_TFUNCTION))
 	{
-		if (query_variable(L, variable, typeName, index, depth))
+		querying = true;
+		bool result = query_variable(L, variable, typeName, index, depth);
+		querying = false;
+		if (result)
 		{
 			return;
 		}

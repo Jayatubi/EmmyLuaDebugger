@@ -95,19 +95,22 @@ bool HookStateStepIn::Start(std::shared_ptr<Debugger> debugger, lua_State* curre
 
 void HookStateStepIn::ProcessHook(std::shared_ptr<Debugger> debugger, lua_State* L, lua_Debug* ar)
 {
-	UpdateStackLevel(debugger, L, ar);
-	if (getDebugEvent(ar) == LUA_HOOKLINE)
+	if (!debugger->IsQuerying())
 	{
-		auto currentLine = getDebugCurrentLine(ar);
-		auto source = getDebugSource(ar);
-		if(currentLine != line || file != source)
+		UpdateStackLevel(debugger, L, ar);
+		if (getDebugEvent(ar) == LUA_HOOKLINE)
 		{
-			debugger->HandleBreak();
+			auto currentLine = getDebugCurrentLine(ar);
+			auto source = getDebugSource(ar);
+			if(currentLine != line || file != source)
+			{
+				debugger->HandleBreak();
+			}
+			return;
 		}
-		return;
-	}
 
-	StackLevelBasedState::ProcessHook(debugger, L, ar);
+		StackLevelBasedState::ProcessHook(debugger, L, ar);
+	}
 }
 
 bool HookStateStepOut::Start(std::shared_ptr<Debugger> debugger, lua_State* current)
@@ -120,13 +123,16 @@ bool HookStateStepOut::Start(std::shared_ptr<Debugger> debugger, lua_State* curr
 
 void HookStateStepOut::ProcessHook(std::shared_ptr<Debugger> debugger, lua_State* L, lua_Debug* ar)
 {
-	UpdateStackLevel(debugger, L, ar);
-	if (newStackLevel < oriStackLevel)
+	if (!debugger->IsQuerying())
 	{
-		debugger->HandleBreak();
-		return;
+		UpdateStackLevel(debugger, L, ar);
+		if (newStackLevel < oriStackLevel)
+		{
+			debugger->HandleBreak();
+			return;
+		}
+		StackLevelBasedState::ProcessHook(debugger, L, ar);
 	}
-	StackLevelBasedState::ProcessHook(debugger, L, ar);
 }
 
 bool HookStateStepOver::Start(std::shared_ptr<Debugger> debugger, lua_State* current)
@@ -144,28 +150,31 @@ bool HookStateStepOver::Start(std::shared_ptr<Debugger> debugger, lua_State* cur
 
 void HookStateStepOver::ProcessHook(std::shared_ptr<Debugger> debugger, lua_State* L, lua_Debug* ar)
 {
-	UpdateStackLevel(debugger, L, ar);
-	// step out
-	if (newStackLevel < oriStackLevel)
+	if (!debugger->IsQuerying())
 	{
-		debugger->HandleBreak();
-		return;
-	}
-
-
-	if (getDebugEvent(ar) == LUA_HOOKLINE &&
-		getDebugCurrentLine(ar) != line &&
-		newStackLevel == oriStackLevel)
-	{
-		lua_getinfo(L, "Sl", ar);
-
-		if (getDebugSource(ar) == file || line == -1)
+		UpdateStackLevel(debugger, L, ar);
+		// step out
+		if (newStackLevel < oriStackLevel)
 		{
 			debugger->HandleBreak();
 			return;
 		}
+
+
+		if (getDebugEvent(ar) == LUA_HOOKLINE &&
+			getDebugCurrentLine(ar) != line &&
+			newStackLevel == oriStackLevel)
+		{
+			lua_getinfo(L, "Sl", ar);
+
+			if (getDebugSource(ar) == file || line == -1)
+			{
+				debugger->HandleBreak();
+				return;
+			}
+		}
+		StackLevelBasedState::ProcessHook(debugger, L, ar);
 	}
-	StackLevelBasedState::ProcessHook(debugger, L, ar);
 }
 
 void HookStateBreak::ProcessHook(std::shared_ptr<Debugger> debugger, lua_State* L, lua_Debug* ar)

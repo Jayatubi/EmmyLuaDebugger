@@ -59,6 +59,8 @@ public:
 	 * 调试器是否运行
 	 */
 	bool IsRunning() const;
+
+	bool IsQuerying() const;
 	/*
 	 * 判断当前使用的lua_state 是否是main state
 	 */
@@ -119,6 +121,7 @@ private:
 	bool running;
 	bool skipHook;
 	bool blocking;
+	bool querying;
 
 	std::vector<std::string> doStringList;
 
