@@ -224,8 +224,10 @@ bool Debugger::GetStacks(std::vector<std::shared_ptr<Stack>>& stacks, StackAlloc
 	auto L = currentL;
 
 	int totalLevel = 0;
+	int indentLevel = 0;
 	while(true)
 	{
+		bool firstIndent = true;
 	    int level = 0;
 	    while (true)
 	    {
@@ -240,7 +242,20 @@ bool Debugger::GetStacks(std::vector<std::shared_ptr<Stack>>& stacks, StackAlloc
 		    }
 		    auto stack = alloc();
 		    stack->file = GetFile(&ar);
-		    stack->functionName = getDebugName(&ar) == nullptr ? "" : getDebugName(&ar);
+		    std::string functionName = getDebugName(&ar) == nullptr ? "<anonymous>" : getDebugName(&ar);
+	    	if (indentLevel > 0 && strcmp(getDebugWhat(&ar), "C") != 0)
+	    	{
+	    		if (firstIndent)
+	    		{
+	    			functionName = std::string((indentLevel - 1) * 2, ' ') + "└ " + functionName;
+	    			firstIndent = false;
+	    		}
+	    		else
+	    		{
+	    			functionName = std::string((indentLevel - 1) * 2, ' ') + "  " + functionName;
+	    		}
+	    	}
+	    	stack->functionName = functionName;
 		    stack->level = totalLevel++;
 		    stack->line = getDebugCurrentLine(&ar);
 		    stacks.push_back(stack);
@@ -298,6 +313,7 @@ bool Debugger::GetStacks(std::vector<std::shared_ptr<Stack>>& stacks, StackAlloc
 		if (PL != nullptr)
 		{
 			L = PL;
+			indentLevel++;
 		}
 		else
 		{
@@ -455,7 +471,7 @@ void Debugger::GetVariable(lua_State* L, std::shared_ptr<Variable> variable, int
 
 	const int topIndex = lua_gettop(L);
 	index = lua_absindex(L, index);
-	CacheValue(index, variable);
+	CacheValue(L, index, variable);
 	const int type = lua_type(L, index);
 	const char* typeName = lua_typename(L, type);
 	variable->valueTypeName = typeName;
@@ -609,15 +625,16 @@ void Debugger::GetVariable(lua_State* L, std::shared_ptr<Variable> variable, int
 	assert(t2 == topIndex);
 }
 
-void Debugger::CacheValue(int valueIndex, std::shared_ptr<Variable> variable) const
+void Debugger::CacheValue(lua_State* L, int valueIndex, std::shared_ptr<Variable> variable) const
 {
-	if (!currentL)
-	{
-		return;
-	}
-
-	auto L = currentL;
-
+	// if (!currentL)
+	// {
+	// 	return;
+	// }
+	//
+	// auto L = currentL;
+	if (!L) L = currentL;
+	
 	const int type = lua_type(L, valueIndex);
 	if (type == LUA_TUSERDATA || type == LUA_TTABLE)
 	{

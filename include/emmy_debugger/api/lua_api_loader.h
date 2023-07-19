@@ -194,6 +194,7 @@ int getDebugCurrentLine(lua_Debug* ar);
 int getDebugLineDefined(lua_Debug* ar);
 const char* getDebugSource(lua_Debug* ar);
 const char* getDebugName(lua_Debug* ar);
+const char* getDebugWhat(lua_Debug* ar);
 
 
 

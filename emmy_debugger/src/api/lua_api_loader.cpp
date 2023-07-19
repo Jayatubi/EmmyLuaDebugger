@@ -235,6 +235,25 @@ const char* getDebugName(lua_Debug* ar)
 	}
 }
 
+const char* getDebugWhat(lua_Debug* ar)
+{
+	switch (luaVersion)
+	{
+	case LuaVersion::LUA_JIT:
+	case LuaVersion::LUA_51:
+		return ar->u.ar51.what;
+	case LuaVersion::LUA_52:
+		return ar->u.ar52.what;
+	case LuaVersion::LUA_53:
+		return ar->u.ar53.what;
+	case LuaVersion::LUA_54:
+		return ar->u.ar54.what;
+	default:
+		assert(false);
+		return nullptr;
+	}
+}
+
 lua_Integer lua_tointeger(lua_State* L, int idx)
 {
 	if (luaVersion > LuaVersion::LUA_51)
